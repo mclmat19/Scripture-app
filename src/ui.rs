@@ -477,6 +477,7 @@ fn render_menu(f: &mut Frame, app: &App, area: Rect){
         ])),
         footer_area,
     );
+}
     if app.mode == Mode::Command {
         let cmd_area = Rect::new(0, area.y, area.width, 1);
         f.render_widget (
@@ -491,11 +492,70 @@ fn render_statusbar(f: &mut Frame, app: &App, area: Rect) {
     if app>mode == Mode::Command{
         f.render_widget(
             Paragraph::new(Line::from(vec![
-                    // TO_DO command line : display 
-            ]))
-            )
+                Span::styled(":", Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),    
+                Span::styled(app.command_input.clone(), Style::default().fg(TEXT)),
+                Span::styled("█", Style::default().fg(BLUE)),
+            ])).style(Style::default().bg(MANTLE),
+            area,
+        );
+        return;
     }
-}
+    let book_name = app.current_book_name();
+    let chapter_num = app.current_chapter_num();
+
+ let mode_label = match app.mode {
+        Mode::Menu => "MENU",
+        Mode::Normal => "NORMAL",
+        Mode::Search => "SEARCH",
+        Mode::Command => "COMMAND",
+    };
+    let mode_color = match app.mode {
+        Mode::Menu => OVERLAY2,
+        Mode::Normal => BLUE,
+        Mode::Search => YELLOW,
+        Mode::Command => BLUE,
+    };
+
+    let left = vec![
+        Span::styled(
+            format!(" {} ", mode_label),
+            Style::default().fg(MANTLE).bg(mode_color).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(" ", Style::default().bg(SURFACE0).fg(mode_color)),
+        Span::styled(
+            format!("  {} Ch.{}", book_name, chapter_num),
+            Style::default().fg(TEXT).bg(SURFACE0),
+        ),
+        Span::styled(" ", Style::default().fg(SURFACE0).bg(BASE)),
+    ];
+
+    let right = vec![
+        Span::styled(" j/k ", Style::default().fg(MANTLE).bg(GREEN).add_modifier(Modifier::BOLD)),
+        Span::styled(" move  ", Style::default().fg(SUBTEXT0).bg(BASE)),
+        Span::styled(" Tab ", Style::default().fg(MANTLE).bg(SKY).add_modifier(Modifier::BOLD)),
+        Span::styled(" switch  ", Style::default().fg(SUBTEXT0).bg(BASE)),
+        Span::styled(" / ", Style::default().fg(MANTLE).bg(PEACH).add_modifier(Modifier::BOLD)),
+        Span::styled(" search  ", Style::default().fg(SUBTEXT0).bg(BASE)),
+        Span::styled(" q ", Style::default().fg(MANTLE).bg(RED).add_modifier(Modifier::BOLD)),
+        Span::styled(" quit ", Style::default().fg(SUBTEXT0).bg(BASE)),
+    ];
+
+    let bar_bg = Paragraph::new("").style(Style::default().bg(BASE));
+    f.render_widget(bar_bg, area);
+
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(0), Constraint::Length(50)])
+        .split(area);
+
+    f.render_widget(
+        Paragraph::new(Line::from(left)).style(Style::default().bg(BASE)),
+        layout[0],
+    );
+    f.render_widget(
+        Paragraph::new(Line::from(right)).style(Style::default().bg(BASE)),
+        layout[1],
+    );
 }
 
 
