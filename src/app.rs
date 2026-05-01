@@ -12,6 +12,7 @@ pub enum Mode {
     Menu,
     Normal,
     Search,
+    Command,
 }
 
 pub struct App {
@@ -37,6 +38,7 @@ pub struct App {
     pub should_quit: bool,
     
     pub search_origin: Mode,
+    pub command_input: String,
 
 }
 
@@ -67,6 +69,7 @@ impl App {
             search_cursor: 0,
             search_origin: Mode::Menu,
             should_quit: false,
+            command_input: String::new(),
         }
     }
 
@@ -223,5 +226,38 @@ impl App {
             .and_then(|b| b.chapters.get(self.selected_chapter))
             .map(|c| c.number)
             .unwrap_or(0)
+    }
+
+    pub fn execute_command(&mut self) {
+        let input = self.command_input.trim().to_lowercase();
+
+        let parts: Vec<&str> = input.splitn(3, ' ').collect();
+
+        match parts.as_slice() { 
+            ["go", book_name, verse] => {
+
+                let mut cv = verse.splitn(2, ':');
+                let ch: usize = cv.next()
+                    .and_then(|s| s.parse::<usize>().ok())
+                    .unwrap_or(1).saturating_sub(1);
+                let v: usize = cv.next()
+                    .and_then(|s| s.parse::<usize>().ok())
+                    .unwrap_or(1).saturating_sub(1);
+
+                if let Some(bi) = self.books.iter().position(|b| {
+                    b.name.to_lowercase() == *book_name
+                }) {
+                    self.selected_book = bi;
+                    self.selected_chapter = ch.min(
+                        self.books[bi].chapters.len().saturating_sub(1)
+                        );
+                    self.selected_verse = v;
+                    self.scroll_offset = v.saturating_sub(4);
+                    self.active_pane = Pane::Reader;
+                    self.mode = Mode::Normal;
+                }
+            }
+            _ => {}
+        }
     }
 }

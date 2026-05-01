@@ -232,11 +232,13 @@ fn render_statusbar(f: &mut Frame, app: &App, area: Rect) {
         Mode::Menu => "MENU",
         Mode::Normal => "NORMAL",
         Mode::Search => "SEARCH",
+        Mode::Command => "COMMAND",
     };
     let mode_color = match app.mode {
         Mode::Menu => OVERLAY2,
         Mode::Normal => BLUE,
         Mode::Search => YELLOW,
+        Mode::Command => BLUE,
     };
 
     let left = vec![
@@ -475,6 +477,25 @@ fn render_menu(f: &mut Frame, app: &App, area: Rect){
         ])),
         footer_area,
     );
+    if app.mode == Mode::Command {
+        let cmd_area = Rect::new(0, area.y, area.width, 1);
+        f.render_widget (
+            Paragraph::new(Line::from(vec![
+                    Span::styled(":", Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
+                    Span::styled(app.command_input.clone(), Style::default().fg(TEXT)),
+            ])).style(Style::default().bg(MANTLE)),
+            cmd_area,
+        );
+    }
+fn render_statusbar(f: &mut Frame, app: &App, area: Rect) {
+    if app>mode == Mode::Command{
+        f.render_widget(
+            Paragraph::new(Line::from(vec![
+                    // TO_DO command line : display 
+            ]))
+            )
+    }
+}
 }
 
 

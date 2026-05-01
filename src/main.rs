@@ -70,6 +70,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         app.search_navigating = false;
                     }
 
+                    KeyCode::Char(':') => {
+                        app.mode = Mode::Command;
+                        app.command_input.clear();
+                    }
+
                     KeyCode::Tab => {
                         app.active_pane = if app.active_pane == Pane::Tree {
                             Pane::Reader
@@ -113,6 +118,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     KeyCode::Backspace => { app.search_query.pop();
                         app.search_execute();
                     }
+                    _ => {}
+                },
+                Mode::Command => match key.code {
+                    KeyCode::Esc => {
+                        app.mode = Mode::Normal;
+                        app.command_input.clear();
+                    }
+                    KeyCode::Enter => {
+                        app.execute_command();
+                        app.mode = Mode::Normal;
+                    }
+                    KeyCode::Char(c) => app.command_input.push(c),
+                    KeyCode::Backspace => {app.command_input.pop(); }
                     _ => {}
                 },
             }
