@@ -27,6 +27,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Event::Key(key) = event::read()? {
             match app.mode {
                 Mode::Menu => match key.code {
+                    KeyCode::Char('s') => app.mode = Mode::Saved,
+
                     KeyCode::Char('q') => break,
                     KeyCode::Char('f') => {
                         app.search_origin = Mode::Menu;
@@ -82,6 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             Pane::Tree
                         };
                     }
+                    KeyCode::Char('m') => app.toggle_mark(),
                     _ => {}
                 },
                 Mode::Search => match key.code {
@@ -131,6 +134,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     KeyCode::Char(c) => app.command_input.push(c),
                     KeyCode::Backspace => {app.command_input.pop(); }
+                    _ => {}
+                },
+
+                Mode::Saved => match key.code {
+                    KeyCode::Char('q') | KeyCode::Esc => app.mode = Mode::Menu,
+                    KeyCode::Char('j') | KeyCode::Down => {
+                        if app.saved_cursor + 1 < app.marked_verses.len() {
+                            app.saved_cursor += 1;
+                        }
+                    }
+                    KeyCode::Char('k') | KeyCode::Up => {
+                        if app.saved_cursor > 0 {
+                            app.saved_cursor -= 1;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        if let Some(&(bi, ci, vi)) = app.marked_verses.get(app.saved_cursor) {
+                            app.selected_book = bi;
+                            app.selected_chapter = ci;
+                            app.selected_verse = vi;
+                            app.scroll_offset = vi.saturating_sub(4);
+                            app.active_pane = Pane::Reader;
+                            app.mode = Mode::Normal;
+                        }
+                    }
                     _ => {}
                 },
             }

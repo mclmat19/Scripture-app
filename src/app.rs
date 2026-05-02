@@ -13,6 +13,7 @@ pub enum Mode {
     Normal,
     Search,
     Command,
+    Saved,
 }
 
 pub struct App {
@@ -39,7 +40,8 @@ pub struct App {
     
     pub search_origin: Mode,
     pub command_input: String,
-
+    pub marked_verses: Vec<(usize, usize, usize)>,
+    pub saved_cursor: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +72,8 @@ impl App {
             search_origin: Mode::Menu,
             should_quit: false,
             command_input: String::new(),
+            marked_verses: vec![],
+            saved_cursor: 0,
         }
     }
 
@@ -259,5 +263,16 @@ impl App {
             }
             _ => {}
         }
+    }
+    pub fn toggle_mark(&mut self) {
+        let key = (self.selected_book, self.selected_chapter, self.selected_verse);
+        if let Some(pos) = self.marked_verses.iter().position(|&v| v == key) {
+            self.marked_verses.remove(pos);
+        } else {
+            self.marked_verses.push(key);
+        }
+    }
+    pub fn is_marked(&self, bi: usize, ci: usize, vi: usize) -> bool {
+        self.marked_verses.contains(&(bi, ci, vi))
     }
 }

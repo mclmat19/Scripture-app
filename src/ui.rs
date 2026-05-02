@@ -34,6 +34,11 @@ pub fn render(f: &mut Frame, app: &App) {
         return;
     }
 
+    if app.mode == Mode::Saved {
+        render_saved(f, app, area);
+        return;
+    }
+
     f.render_widget(
         Block::default().style(Style::default().bg(BASE)),
         area,
@@ -104,7 +109,7 @@ fn render_tree(f: &mut Frame, app: &App, area: Rect) {
                 };
                 ListItem::new(Line::from(vec![
                     Span::styled(format!(" {} ", arrow), Style::default().fg(OVERLAY2)),
-                    Span::styled("📖 ", Style::default().fg(icon_color)),
+                    Span::styled("» ", Style::default().fg(icon_color)),
                     Span::styled(book.name.clone(), style),
                     Span::styled(
                         format!(" {}", book.chapter_count()),
@@ -189,14 +194,17 @@ fn render_reader(f: &mut Frame, app: &App, area: Rect) {
 
     for (vi, verse) in chapter.verses.iter().enumerate() {
         let is_selected = vi == app.selected_verse;
+        let is_marked = app.is_marked(app.selected_book, app.selected_chapter, vi);
 
         let verse_num = Span::styled(
-            format!("{:>3} ", verse.number),
+            format!("{:>3}{} ", verse.number, if is_marked { "★" } else { " " }),
             Style::default().fg(RED).add_modifier(Modifier::BOLD),
         );
 
         let text_style = if is_selected {
             Style::default().fg(TEXT).bg(SURFACE0)
+        } else if is_marked {
+            Style::default().fg(BLUE).add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(SUBTEXT1)
         };
@@ -240,12 +248,14 @@ fn render_statusbar(f: &mut Frame, app: &App, area: Rect) {
         Mode::Normal  => "NORMAL",
         Mode::Search  => "SEARCH",
         Mode::Command => "COMMAND",
+        Mode::Saved   => "SAVED",
     };
     let mode_color = match app.mode {
         Mode::Menu    => OVERLAY2,
         Mode::Normal  => BLUE,
         Mode::Search  => YELLOW,
         Mode::Command => BLUE,
+        Mode::Saved   => GREEN,
     };
 
     let left = vec![
@@ -439,6 +449,7 @@ fn render_menu(f: &mut Frame, _app: &App, area: Rect) {
         ("›", "Devotionals",      "d"),
         ("›", "Recent Searches",  "r"),
         ("›", "Project",          "p"),
+        ("›", "Saved Verses",     "s"),
         ("›", "Config",           "g"),
         ("›", "Quit",             "q"),
     ];
@@ -453,7 +464,7 @@ fn render_menu(f: &mut Frame, _app: &App, area: Rect) {
             Constraint::Length(v_pad),
             Constraint::Length(6),
             Constraint::Length(2),
-            Constraint::Length(8),
+            Constraint::Length(9),
             Constraint::Length(2),
             Constraint::Min(0),
         ])
@@ -490,4 +501,73 @@ fn render_menu(f: &mut Frame, _app: &App, area: Rect) {
         ])),
         footer_area,
     );
+}
+
+fn render_saved(f: &mut Frame, app: &App, area: Rect) {
+    f.render_widget(
+        Block::default().style(Style::default().bg(BASE)),
+        area,
+    );
+
+    let block = Block::default()
+        .title(Line::from(vec![
+            Span::styled(" ★ Saved Verses ", Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
+        ]))
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(BLUE))
+        .style(Style::default().bg(MANTLE));
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
+    if app.marked_verses.is_empty() {
+        f.render_widget(
+            Paragraph::new(Span::styled(
+                "  No saved verses yet. Press 'm' on a verse to save it.",
+                Style::default().fg(OVERLAY2),
+            )),
+            inner,
+        );
+        return;
+    }
+
+    let mut items: Vec<ListItem> = vec![];
+    for (i, &(bi, ci, vi)) in app.marked_verses.iter().enumerate() {
+        if let Some(book) = app.books.get(bi) {
+            if let Some(chapter) = book.chapters.get(ci) {
+                if let Some(verse) = chapter.verses.get(vi) {
+                    let is_selected = i == app.saved_cursor;
+                    let ref_str = format!(" ★  {} {}:{} ", book.name, chapter.number, verse.number);
+                    let cut = verse.text.char_indices()
+                        .map(|(i, _)| i)
+                        .nth(60)
+                        .unwrap_or(verse.text.len());
+                    let preview = if verse.text.len() > 60 {
+                        format!("{}...", &verse.text[..cut])
+                    } else {
+                        verse.text.clone()
+                    };
+                    let style = if is_selected {
+                        Style::default().fg(BLUE).bg(SURFACE0).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default().fg(SUBTEXT0)
+                    };
+                    items.push(ListItem::new(Line::from(vec![
+                        Span::styled(ref_str, Style::default().fg(RED).add_modifier(Modifier::BOLD)),
+                        Span::styled(preview, style),
+                    ])));
+                }
+            }
+        }
+    }
+
+    let mut list_state = ListState::default();
+    list_state.select(Some(app.saved_cursor));
+
+    let list = List::new(items)
+        .highlight_style(Style::default())
+        .style(Style::default().bg(MANTLE));
+
+    f.render_stateful_widget(list, inner, &mut list_state);
 }
