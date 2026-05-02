@@ -1,4 +1,3 @@
-// src/ui.rs
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -27,27 +26,24 @@ const RED: Color       = Color::Rgb(85, 85, 85);
 const GREEN: Color     = Color::Rgb(51, 51, 51);
 const YELLOW: Color    = Color::Rgb(153, 153, 153);
 
-
 pub fn render(f: &mut Frame, app: &App) {
     let area = f.area();
-    
+
     if app.mode == Mode::Menu {
         render_menu(f, app, area);
         return;
     }
-    // Background
+
     f.render_widget(
         Block::default().style(Style::default().bg(BASE)),
         area,
     );
 
-    // Root layout: main area | status bar
     let root = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(0), Constraint::Length(1)])
         .split(area);
 
-    // Main layout: sidebar | reader
     let main = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Length(28), Constraint::Min(0)])
@@ -108,7 +104,7 @@ fn render_tree(f: &mut Frame, app: &App, area: Rect) {
                 };
                 ListItem::new(Line::from(vec![
                     Span::styled(format!(" {} ", arrow), Style::default().fg(OVERLAY2)),
-                    Span::styled("B ", Style::default().fg(icon_color)),
+                    Span::styled("📖 ", Style::default().fg(icon_color)),
                     Span::styled(book.name.clone(), style),
                     Span::styled(
                         format!(" {}", book.chapter_count()),
@@ -173,7 +169,6 @@ fn render_reader(f: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     f.render_widget(block, area);
 
-    // Chapter heading + verses
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(2), Constraint::Min(0)])
@@ -208,7 +203,7 @@ fn render_reader(f: &mut Frame, app: &App, area: Rect) {
 
         let verse_text = Span::styled(verse.text.clone(), text_style);
         lines.push(Line::from(vec![verse_num, verse_text]));
-        lines.push(Line::from("")); // blank line between verses
+        lines.push(Line::from(""));
     }
 
     let visible_lines: Vec<Line> = lines
@@ -225,19 +220,31 @@ fn render_reader(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_statusbar(f: &mut Frame, app: &App, area: Rect) {
+    if app.mode == Mode::Command {
+        f.render_widget(
+            Paragraph::new(Line::from(vec![
+                Span::styled(":", Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),
+                Span::styled(app.command_input.clone(), Style::default().fg(TEXT)),
+                Span::styled("█", Style::default().fg(BLUE)),
+            ])).style(Style::default().bg(MANTLE)),
+            area,
+        );
+        return;
+    }
+
     let book_name = app.current_book_name();
     let chapter_num = app.current_chapter_num();
 
     let mode_label = match app.mode {
-        Mode::Menu => "MENU",
-        Mode::Normal => "NORMAL",
-        Mode::Search => "SEARCH",
+        Mode::Menu    => "MENU",
+        Mode::Normal  => "NORMAL",
+        Mode::Search  => "SEARCH",
         Mode::Command => "COMMAND",
     };
     let mode_color = match app.mode {
-        Mode::Menu => OVERLAY2,
-        Mode::Normal => BLUE,
-        Mode::Search => YELLOW,
+        Mode::Menu    => OVERLAY2,
+        Mode::Normal  => BLUE,
+        Mode::Search  => YELLOW,
         Mode::Command => BLUE,
     };
 
@@ -305,15 +312,20 @@ fn render_search(f: &mut Frame, app: &App, area: Rect) {
         .margin(1)
         .split(inner);
 
-    // Search input
+    let mode_indicator = if app.search_navigating {
+        Span::styled("  ↑↓ navigate ", Style::default().fg(TEAL))
+    } else {
+        Span::styled("  typing... ", Style::default().fg(YELLOW))
+    };
+
     let input = Paragraph::new(Line::from(vec![
         Span::styled("/ ", Style::default().fg(YELLOW).add_modifier(Modifier::BOLD)),
         Span::styled(app.search_query.clone(), Style::default().fg(TEXT)),
         Span::styled("█", Style::default().fg(BLUE)),
+        mode_indicator,
     ]));
     f.render_widget(input, layout[0]);
 
-    // Divider
     let divider = Paragraph::new(Line::from(vec![
         Span::styled(
             "─".repeat(inner.width as usize - 2),
@@ -322,7 +334,6 @@ fn render_search(f: &mut Frame, app: &App, area: Rect) {
     ]));
     f.render_widget(divider, layout[1]);
 
-    // Results
     let result_area = layout[2];
     if app.search_results.is_empty() {
         let msg = if app.search_query.is_empty() {
@@ -351,7 +362,7 @@ fn render_search(f: &mut Frame, app: &App, area: Rect) {
                 if let Some(verse) = chapter.verses.get(vi) {
                     let is_selected = i == app.search_cursor;
                     let ref_str = format!(" {}  {}:{} ", book.name, chapter.number, verse.number);
-                    
+
                     let text_preview = if verse.text.len() > 40 {
                         let cut = verse.text.char_indices()
                             .map(|(i, _)| i)
@@ -406,11 +417,12 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
-fn render_menu(f: &mut Frame, app: &App, area: Rect){
+fn render_menu(f: &mut Frame, _app: &App, area: Rect) {
     f.render_widget(
         Block::default().style(Style::default().bg(BASE)),
         area,
-        );
+    );
+
     let logo = vec![
         " ███████╗ ██████╗██████╗ ██╗██████╗ ████████╗██╗   ██╗██████╗ ███████╗███████╗",
         " ██╔════╝██╔════╝██╔══██╗██║██╔══██╗╚══██╔══╝██║   ██║██╔══██╗██╔════╝██╔════╝",
@@ -431,7 +443,7 @@ fn render_menu(f: &mut Frame, app: &App, area: Rect){
         ("›", "Quit",             "q"),
     ];
 
-    let total_height = logo.len() as u16 +  2 + menu_items.len() as u16 + 3;
+    let total_height = logo.len() as u16 + 2 + menu_items.len() as u16 + 3;
     let v_pad = area.height.saturating_sub(total_height) / 2;
     let h_pad = area.width.saturating_sub(82) / 2;
 
@@ -449,7 +461,7 @@ fn render_menu(f: &mut Frame, app: &App, area: Rect){
 
     for (i, line) in logo.iter().enumerate() {
         let y = layout[1].y + i as u16;
-        let logo_area = Rect::new(h_pad, y,area.width.saturating_sub(h_pad), 1);
+        let logo_area = Rect::new(h_pad, y, area.width.saturating_sub(h_pad), 1);
         f.render_widget(
             Paragraph::new(Span::styled(*line, Style::default().fg(BLUE))),
             logo_area,
@@ -459,16 +471,17 @@ fn render_menu(f: &mut Frame, app: &App, area: Rect){
     let menu_x = area.width / 2 - 18;
     for (i, (icon, label, key)) in menu_items.iter().enumerate() {
         let y = layout[3].y + i as u16;
-        let row_area = Rect::new(menu_x,y,40,1);
+        let row_area = Rect::new(menu_x, y, 40, 1);
         f.render_widget(
             Paragraph::new(Line::from(vec![
-                    Span::styled(format!("{} ",icon), Style::default().fg(BLUE)),
-                    Span::styled(format!("{:<22}",label),Style::default().fg(TEXT)),
-                    Span::styled(key.to_string(), Style::default().fg(RED)),
+                Span::styled(format!("{} ", icon), Style::default().fg(BLUE)),
+                Span::styled(format!("{:<22}", label), Style::default().fg(TEXT)),
+                Span::styled(key.to_string(), Style::default().fg(RED)),
             ])),
             row_area,
         );
     }
+
     let footer_area = Rect::new(menu_x, layout[4].y, 40, 1);
     f.render_widget(
         Paragraph::new(Line::from(vec![
@@ -478,96 +491,3 @@ fn render_menu(f: &mut Frame, app: &App, area: Rect){
         footer_area,
     );
 }
-    if app.mode == Mode::Command {
-        let cmd_area = Rect::new(0, area.y, area.width, 1);
-        f.render_widget (
-            Paragraph::new(Line::from(vec![
-                    Span::styled(":", Style::default().fg(BLUE).add_modifier(Modifier::BOLD)),
-                    Span::styled(app.command_input.clone(), Style::default().fg(TEXT)),
-            ])).style(Style::default().bg(MANTLE)),
-            cmd_area,
-        );
-    }
-fn render_statusbar(f: &mut Frame, app: &App, area: Rect) {
-    if app>mode == Mode::Command{
-        f.render_widget(
-            Paragraph::new(Line::from(vec![
-                Span::styled(":", Style::default().fg(TEXT).add_modifier(Modifier::BOLD)),    
-                Span::styled(app.command_input.clone(), Style::default().fg(TEXT)),
-                Span::styled("█", Style::default().fg(BLUE)),
-            ])).style(Style::default().bg(MANTLE),
-            area,
-        );
-        return;
-    }
-    let book_name = app.current_book_name();
-    let chapter_num = app.current_chapter_num();
-
- let mode_label = match app.mode {
-        Mode::Menu => "MENU",
-        Mode::Normal => "NORMAL",
-        Mode::Search => "SEARCH",
-        Mode::Command => "COMMAND",
-    };
-    let mode_color = match app.mode {
-        Mode::Menu => OVERLAY2,
-        Mode::Normal => BLUE,
-        Mode::Search => YELLOW,
-        Mode::Command => BLUE,
-    };
-
-    let left = vec![
-        Span::styled(
-            format!(" {} ", mode_label),
-            Style::default().fg(MANTLE).bg(mode_color).add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" ", Style::default().bg(SURFACE0).fg(mode_color)),
-        Span::styled(
-            format!("  {} Ch.{}", book_name, chapter_num),
-            Style::default().fg(TEXT).bg(SURFACE0),
-        ),
-        Span::styled(" ", Style::default().fg(SURFACE0).bg(BASE)),
-    ];
-
-    let right = vec![
-        Span::styled(" j/k ", Style::default().fg(MANTLE).bg(GREEN).add_modifier(Modifier::BOLD)),
-        Span::styled(" move  ", Style::default().fg(SUBTEXT0).bg(BASE)),
-        Span::styled(" Tab ", Style::default().fg(MANTLE).bg(SKY).add_modifier(Modifier::BOLD)),
-        Span::styled(" switch  ", Style::default().fg(SUBTEXT0).bg(BASE)),
-        Span::styled(" / ", Style::default().fg(MANTLE).bg(PEACH).add_modifier(Modifier::BOLD)),
-        Span::styled(" search  ", Style::default().fg(SUBTEXT0).bg(BASE)),
-        Span::styled(" q ", Style::default().fg(MANTLE).bg(RED).add_modifier(Modifier::BOLD)),
-        Span::styled(" quit ", Style::default().fg(SUBTEXT0).bg(BASE)),
-    ];
-
-    let bar_bg = Paragraph::new("").style(Style::default().bg(BASE));
-    f.render_widget(bar_bg, area);
-
-    let layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(0), Constraint::Length(50)])
-        .split(area);
-
-    f.render_widget(
-        Paragraph::new(Line::from(left)).style(Style::default().bg(BASE)),
-        layout[0],
-    );
-    f.render_widget(
-        Paragraph::new(Line::from(right)).style(Style::default().bg(BASE)),
-        layout[1],
-    );
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
